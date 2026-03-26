@@ -1,0 +1,262 @@
+# VaultForge Pipeline Configuration
+# This file controls all pipeline behavior.
+# Edit paths here — do NOT hardcode paths in pipeline scripts.
+
+pipeline:
+  name: "Vector Ecosystem Knowledge Base"
+  version: "2.0"
+  description: "Full-stack knowledge pipeline for 13 Vector robot repositories + TRM"
+
+# Source Paths (symlinks in sources/ point to these)
+sources:
+  pdf: "/Users/lab/research/Sources/VectorTRM.pdf"
+  repositories: "/Users/lab/research/VectorMap/data/Repositories"
+  existing_vault: "/Users/lab/research/VectorMap/data/Vector_Obsidian_Vault_TEST"  # reference only
+
+# Output Paths
+output:
+  vault:             "/Users/lab/research/VectorMap/data/Vector_Obsidian_Vault_V2"
+  chroma_db:         "/Users/lab/research/VectorMap/data/chroma_db_v2"
+  pipeline_work:     "/Users/lab/research/VaultForge/pipeline_output"
+  trm_figures:       "/Users/lab/research/VaultForge/pipeline_output/trm_figures"
+  trm_structured:    "/Users/lab/research/VaultForge/pipeline_output/trm_structured"
+  symbol_tables:     "/Users/lab/research/VaultForge/pipeline_output/symbol_tables"
+  chunks:            "/Users/lab/research/VaultForge/pipeline_output/chunks"
+  clone_pairs:       "/Users/lab/research/VaultForge/pipeline_output/clone_pairs"
+  annotations_cache: "/Users/lab/research/VaultForge/pipeline_output/annotations_cache"
+  metadata_db:       "/Users/lab/research/VaultForge/pipeline_output/pipeline_metadata.db"
+  bm25_index:        "/Users/lab/research/VaultForge/pipeline_output/bm25_index.pkl"
+  logs:              "/Users/lab/research/VaultForge/pipeline_output/logs/pipeline.log"
+
+# Python Environment
+python:
+  executable: "/Users/lab/research/VectorMap/agent_env/bin/python"
+  pip:        "/Users/lab/research/VectorMap/agent_env/bin/pip"
+
+# Repository processing order (dependency-aware)
+repos:
+  - name: vector
+    language_primary: cpp
+    tags: [firmware, hardware_closest, stm32, snapdragon]
+    notes: "Core robot firmware. Most hardware-adjacent code."
+
+  - name: chipper
+    language_primary: go
+    tags: [grpc_server, voice_processing, cloud_bridge, central_hub]
+    notes: "The central gRPC server. wire-pod is a reimplementation of this."
+
+  - name: vector-cloud
+    language_primary: go
+    tags: [cloud, authentication, gateway, tls]
+    notes: "Cloud backend for robot auth and gateway."
+
+  - name: vector-python-sdk
+    language_primary: python
+    tags: [sdk, public_api, behavior, grpc_client]
+    notes: "Primary public Python SDK. Most LLM-facing API."
+
+  - name: vector-go-sdk
+    language_primary: go
+    tags: [sdk, go, grpc_client]
+    notes: "Go SDK, mirrors python SDK structure."
+
+  - name: wire-pod
+    language_primary: go
+    tags: [community, local_server, chipper_fork, wire_pod]
+    notes: "Community chipper replacement. Many forked/modified functions from chipper."
+
+  - name: escape-pod-extension
+    language_primary: go
+    tags: [local_ai, escape_pod, community]
+    notes: "Local AI processing extension."
+
+  - name: hugh
+    language_primary: go
+    tags: [face_recognition, computer_vision]
+    notes: "Face recognition service."
+
+  - name: vector-bluetooth
+    language_primary: mixed
+    tags: [ble, onboarding, bluetooth]
+    notes: "BLE setup and onboarding."
+
+  - name: dev-docs
+    language_primary: markdown
+    tags: [documentation, official]
+    notes: "Official developer documentation."
+
+  - name: vector-web-setup
+    language_primary: javascript
+    tags: [web_ui, setup, frontend]
+    notes: "Web-based setup interface."
+
+  - name: vectorx
+    language_primary: mixed
+    tags: [community, extensions]
+    notes: "Community extended features."
+
+  - name: vectorx-voiceserver
+    language_primary: go
+    tags: [voice, community, extension]
+    notes: "Voice server extension."
+
+# File parsing settings
+parsing:
+  supported_extensions:
+    - .py
+    - .go
+    - .c
+    - .h
+    - .cpp
+    - .hpp
+    - .js
+    - .mjs
+    - .ts
+    - .tsx
+    - .proto
+    - .sh
+    - .yaml
+    - .yml
+    - .md
+    - .json
+
+  skip_dirs:
+    - .git
+    - vendor
+    - node_modules
+    - build
+    - dist
+    - __pycache__
+    - .cache
+    - .idea
+    - .vscode
+    - testdata
+
+  skip_file_patterns:
+    - "*_test.go"
+    - "test_*.py"
+    - "*_pb2.py"          # protobuf generated — link to .proto source instead
+    - "*_pb2_grpc.py"     # protobuf generated
+    - "*.pb.go"           # protobuf generated Go
+
+  max_file_size_mb: 5     # skip files larger than this
+
+# Chunking settings
+chunking:
+  tokenizer: "cl100k_base"
+  max_tokens:
+    code:       512
+    trm_prose:  768
+    trm_table:  256
+    trm_note:   256
+    trm_code:   512
+    trm_figure: 384
+  overlap_tokens: 50
+  min_tokens: 20          # skip chunks smaller than this
+
+# LLM annotation settings
+annotation:
+  enabled: true
+  ollama_url: "http://127.0.0.1:11434"
+  preferred_models:
+    - phi4
+    - qwen2.5-coder
+    - smollm2
+  levels:
+    - function             # annotate all functions/methods
+    - class                # annotate all classes/structs
+    - file                 # annotate all files
+    - repo                 # annotate all repos
+  batch_size: 5            # functions per Ollama call
+  timeout_seconds: 30
+
+# Similarity detection settings
+similarity:
+  enabled: true
+  minhash_num_perm: 128   # MinHash permutations (higher = more accurate)
+  lsh_threshold: 0.60     # minimum similarity to consider a pair
+  min_function_tokens: 20 # skip tiny functions from similarity check
+  relationship_thresholds:
+    exact_copy: 0.95
+    near_identical_fork: 0.80
+    fork_with_modifications: 0.60
+
+# TRM PDF settings
+trm:
+  pdf_path: "/Users/lab/research/Sources/VectorTRM.pdf"
+  figure_dpi: 200
+  figure_format: "png"
+  vision_model: "llava"   # Ollama vision model for figure description (if available)
+  mono_font_names:
+    - Courier
+    - Mono
+    - Code
+    - Consolas
+    - "Letter Gothic"
+    - "Lucida Console"
+  note_prefixes:
+    - "NOTE:"
+    - "WARNING:"
+    - "IMPORTANT:"
+    - "CAUTION:"
+    - "DESIGN DECISION:"
+    - "DESIGN NOTE:"
+
+# Hardware component registry (from TRM)
+hardware_components:
+  - id: TRM__Snapdragon_212
+    full_name: "Qualcomm Snapdragon 212 (APQ8009w)"
+    type: processor
+    keywords: [snapdragon, apq8009, qualcomm, linux, yocto, cozmongine]
+
+  - id: TRM__STM32_Body_Board
+    full_name: "STM32F427 Microcontroller Body Board"
+    type: microcontroller
+    keywords: [stm32, f427, body_board, spi, pid, encoder, motor, cliff, sensor, ik]
+
+  - id: TRM__QCA9377_WiFi_BLE
+    full_name: "Qualcomm QCA9377 WiFi + Bluetooth Module"
+    type: wireless
+    keywords: [qca9377, wifi, bluetooth, ble, wlan, network, gateway, onboarding]
+
+  - id: TRM__Camera_OV7740
+    full_name: "OmniVision OV7740 Camera Sensor"
+    type: sensor
+    keywords: [ov7740, camera, vision, image, capture, face, opencv, vga, cmos]
+
+  - id: TRM__Mic_Array
+    full_name: "4-Microphone Beamforming Array"
+    type: sensor
+    keywords: [microphone, mic, beamforming, wake_word, sensory, vtt, audio, speech]
+
+  - id: TRM__Laser_ToF_VL53L0X
+    full_name: "STMicro VL53L0X Time-of-Flight Laser Sensor"
+    type: sensor
+    keywords: [vl53l0x, tof, laser, lidar, ranging, distance, obstacle, cliff]
+
+  - id: TRM__Motors_Wheels_Head_Lift
+    full_name: "DC Brushed Gear Motors (Wheels, Head, Lift)"
+    type: actuator
+    keywords: [motor, wheel, drive, locomotion, head, lift, encoder, pwm, pid, dc_motor]
+
+  - id: TRM__Face_Display_IPS
+    full_name: "184×96 Custom IPS TFT LCD Face Display"
+    type: display
+    keywords: [display, lcd, ips, tft, eye, face, render, animation, screen, oled]
+
+# ChromaDB settings
+chroma:
+  path: "/Users/lab/research/VectorMap/data/chroma_db_v2"
+  collections:
+    - name: repo_code
+      description: "All repository symbols (functions, classes, structs)"
+    - name: trm_prose
+      description: "TRM chapter and section narrative text"
+    - name: trm_code
+      description: "TRM extracted code snippets with language tags"
+    - name: trm_tables
+      description: "TRM tables linearized as structured text"
+    - name: trm_notes
+      description: "TRM developer notes and warnings — HIGH PRIORITY"
+  batch_size: 32
+  embedding_model: "nomic-embed-text"  # via Ollama

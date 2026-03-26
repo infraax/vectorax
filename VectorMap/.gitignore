@@ -1,0 +1,56 @@
+# ─── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ─── Virtual Environment ──────────────────────────────────────────────────────
+agent_env/
+venv/
+.venv/
+env/
+
+# ─── Testing ──────────────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+*.xml
+
+# ─── Runtime Data (local only, not committed) ─────────────────────────────────
+data/chroma_db_test/
+data/Vector_Obsidian_Vault_TEST/
+data/Repositories/
+data/langchain_cache.db
+
+# Keep the data directory itself
+!data/.gitkeep
+
+# ─── Logs ────────────────────────────────────────────────────────────────────
+logs/
+*.log
+*.jsonl
+
+# ─── Environment & Secrets ───────────────────────────────────────────────────
+.env
+.env.local
+.env.production
+
+# ─── macOS ───────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ─── IDE ──────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ─── Obsidian ────────────────────────────────────────────────────────────────
+.obsidian/

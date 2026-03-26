@@ -1,0 +1,83 @@
+# Vector Robot — Source Repositories
+#
+# These repositories are parsed by VaultForge/pipeline/ to build the ChromaDB
+# vector store used by VectorMap for semantic search.
+#
+# To re-clone all repos:
+#   bash VaultForge/sources/clone_repos.sh
+#
+# After cloning, re-run the pipeline:
+#   cd VaultForge && python pipeline/db_writer.py
+
+repositories:
+  # ── Core SDKs ────────────────────────────────────────────────────────────
+  - name: vector
+    url: https://github.com/digital-dream-labs/vector.git
+    description: Main Anki Vector C++ firmware source
+    language: C++
+    primary: true
+
+  - name: vector-python-sdk
+    url: https://github.com/fforchino/vector-python-sdk.git
+    description: Python SDK for Vector (community fork)
+    language: Python
+
+  - name: vector-go-sdk
+    url: https://github.com/fforchino/vector-go-sdk.git
+    description: Go language bindings for Vector
+    language: Go
+
+  # ── Cloud & Server ────────────────────────────────────────────────────────
+  - name: vector-cloud
+    url: https://github.com/digital-dream-labs/vector-cloud.git
+    description: Cloud gateway and services (Go/Protobuf)
+    language: Go
+
+  - name: wire-pod
+    url: https://github.com/kercre123/wire-pod.git
+    description: Drop-in self-hosted replacement for Vector cloud
+    language: Go
+
+  # ── Connectivity ──────────────────────────────────────────────────────────
+  - name: vector-bluetooth
+    url: https://github.com/digital-dream-labs/vector-bluetooth.git
+    description: BLE/Bluetooth low-level communication
+    language: Various
+
+  # ── Client Applications ───────────────────────────────────────────────────
+  - name: chipper
+    url: https://github.com/digital-dream-labs/chipper.git
+    description: Vector companion app (intent/NLP processing)
+    language: Go
+
+  - name: vector-web-setup
+    url: https://github.com/digital-dream-labs/vector-web-setup.git
+    description: Web UI for Vector setup and configuration
+    language: JavaScript
+
+  # ── Extended / Community ──────────────────────────────────────────────────
+  - name: vectorx
+    url: https://github.com/fforchino/vectorx.git
+    description: Community extended Vector with extra capabilities
+    language: Various
+
+  - name: vectorx-voiceserver
+    url: https://github.com/fforchino/vectorx-voiceserver.git
+    description: Voice/speech services for VectorX
+    language: Various
+
+  # ── Development Tools ─────────────────────────────────────────────────────
+  - name: escape-pod-extension
+    url: https://github.com/digital-dream-labs/escape-pod-extension.git
+    description: VS Code extension for Vector development
+    language: TypeScript
+
+  - name: dev-docs
+    url: https://github.com/digital-dream-labs/dev-docs.git
+    description: Official Digital Dream Labs development documentation
+    language: Markdown
+
+  - name: hugh
+    url: https://github.com/digital-dream-labs/hugh.git
+    description: Legacy/research repository
+    language: Various

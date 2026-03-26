@@ -1,0 +1,103 @@
+# ==========================================
+# Vectorax — .gitignore
+# ==========================================
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+agent_env/
+venv/
+.venv/
+env/
+
+# Pytest / test artifacts
+.pytest_cache/
+*.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# ==========================================
+# VectotMap — Data (Large / Generated)
+# ==========================================
+
+# ChromaDB vector stores — large binary data
+# The active chroma_db_v2/ will be provided as a separate download (see DOWNLOADS.md)
+VectorMap/data/chroma_db/
+VectorMap/data/chroma_db_test/
+VectorMap/data/chroma_db_v2/
+
+# SQLite caches and runtime databases
+VectorMap/data/langchain_cache.db
+VectorMap/data/query_history.db
+VectorMap/data/vault_meta_v2.db
+VectorMap/data/*.db
+
+# Session logs and server output
+VectorMap/logs/
+VectorMap/data/server_stdout.log
+VectorMap/data/session_*.jsonl
+
+# Old / unused Obsidian vaults
+VectorMap/data/Vector_Obsidian_Vault_TEST/
+VectorMap/data/Vector_Obsidian_Vault_V2/
+
+# ==========================================
+# VaultForge — Pipeline Artifacts
+# ==========================================
+
+# Large intermediate pipeline outputs
+VaultForge/pipeline_output/bm25_index.pkl
+VaultForge/pipeline_output/annotations_cache/
+VaultForge/pipeline_output/chunks/
+VaultForge/pipeline_output/clone_pairs/
+VaultForge/pipeline_output/logs/
+VaultForge/pipeline_output/symbol_tables/
+VaultForge/pipeline_output/trm_figures/
+VaultForge/pipeline_output/trm_structured/
+VaultForge/pipeline_output/progress.json
+VaultForge/pipeline_output/
+
+# Cloned source repositories are managed as git submodules
+VaultForge/sources/repositories/
+VectorMap/data/Repositories/
+
+# Old session reference material (replaced by REPOS.yaml + clone_repos.sh)
+VaultForge/sources/existing_vault_reference/
+VaultForge/sources/gemini_scripts_reference/
+
+# Archive (old Gemini session scripts)
+archive/
+
+# ==========================================
+# Source PDF (large — host separately)
+# ==========================================
+Sources/VectorTRM.pdf
+
+# ==========================================
+# macOS
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V8
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ==========================================
+# Editor / IDE
+# ==========================================
+.vscode/settings.json
+*.swp
+*.swo
+.idea/

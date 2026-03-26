@@ -1,0 +1,55 @@
+{
+  "$schema": "https://raw.githubusercontent.com/infraax/claude-project/main/schema/claude-project.schema.json",
+  "version": "4",
+  "project_id": "2b5ee29f-7c65-477c-9db5-c9a86d955d96",
+  "name": "Vectorax",
+  "description": "Fully local agentic AI system that lets AI agents and LLMs efficiently work with all code made for the Anki Vector robot — LangGraph RAG pipeline, ChromaDB vector store, Ollama LLM, 5-page dashboard, zero hallucinations on file citations",
+  "stage": "GitHub Prep",
+  "created": "2026-03-22",
+  "created_by": "MacBook / lab",
+  "obsidian_vault": "/Volumes/ClaudeLab/Knowledge/obsidian-vault",
+  "obsidian_folder": "Projects/Vectorax",
+  "diary_path": "/Users/lab/.claude/projects/project-2b5ee29f/memory",
+  "agents": {
+    "summariser": {
+      "role": "Project summariser",
+      "model": "claude-sonnet-4-6",
+      "instructions": "Summarise recent session events, highlight blockers, and update the project diary.",
+      "tools": ["read_file", "list_files", "log_event"],
+      "max_tokens": 2048
+    }
+  },
+  "services": {
+    "vectormap": {
+      "type": "http",
+      "url": "http://127.0.0.1",
+      "description": "VectorMap FastAPI backend (dynamic port)"
+    },
+    "ollama": {
+      "type": "http",
+      "url": "http://127.0.0.1:11434",
+      "description": "Ollama local LLM inference"
+    },
+    "obsidian": {
+      "type": "http",
+      "url": "http://127.0.0.1:27123",
+      "description": "Obsidian local REST API"
+    }
+  },
+  "automations": [
+    {
+      "id": "sync-on-session-end",
+      "trigger": { "type": "event", "event_type": "session_end" },
+      "action": { "type": "sync_obsidian" }
+    },
+    {
+      "id": "daily-standup",
+      "trigger": { "type": "schedule", "cron": "0 9 * * 1-5" },
+      "action": {
+        "type": "dispatch_agent",
+        "agent": "summariser",
+        "prompt": "Summarise yesterday's session events for the Vectorax project and flag any blockers."
+      }
+    }
+  ]
+}

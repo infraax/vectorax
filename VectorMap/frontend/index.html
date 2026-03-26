@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VectorMap</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>tailwind.config={theme:{extend:{colors:{darkblue:'#030712',panel:'#0f172a',accent:'#38bdf8',danger:'#f43f5e',warning:'#fbbf24',safe:'#10b981'}}}}</script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-darkblue text-slate-300 h-screen overflow-hidden flex font-sans">
+
+<!-- SIDEBAR -->
+<div class="flex flex-col w-16 bg-[#02060f] border-r border-slate-800 items-center py-6 gap-6 z-50 flex-shrink-0">
+    <div class="text-accent text-2xl drop-shadow-[0_0_10px_rgba(56,189,248,0.5)] mb-4"><i class="fa-solid fa-microchip"></i></div>
+    <div onclick="switchPage(1)" id="nav-1" class="nav-btn active w-full py-4 flex flex-col items-center justify-center group relative">
+        <i class="fa-solid fa-server text-lg"></i>
+        <span class="text-[8px] opacity-0 group-hover:opacity-100 absolute left-14 bg-slate-800 px-2 py-1 rounded text-white pointer-events-none whitespace-nowrap z-50">Command Center</span>
+    </div>
+    <div onclick="switchPage(2)" id="nav-2" class="nav-btn w-full py-4 flex flex-col items-center justify-center group relative">
+        <i class="fa-solid fa-robot text-lg"></i>
+        <span class="text-[8px] opacity-0 group-hover:opacity-100 absolute left-14 bg-slate-800 px-2 py-1 rounded text-white pointer-events-none whitespace-nowrap z-50">Agentic Forge</span>
+    </div>
+    <div onclick="switchPage(3)" id="nav-3" class="nav-btn w-full py-4 flex flex-col items-center justify-center group relative">
+        <i class="fa-solid fa-map text-lg"></i>
+        <span class="text-[8px] opacity-0 group-hover:opacity-100 absolute left-14 bg-slate-800 px-2 py-1 rounded text-white pointer-events-none whitespace-nowrap z-50">Semantic Observatory</span>
+    </div>
+    <div onclick="switchPage(4)" id="nav-4" class="nav-btn w-full py-4 flex flex-col items-center justify-center group relative">
+        <i class="fa-solid fa-database text-lg"></i>
+        <span class="text-[8px] opacity-0 group-hover:opacity-100 absolute left-14 bg-slate-800 px-2 py-1 rounded text-white pointer-events-none whitespace-nowrap z-50">Vault Management</span>
+    </div>
+    <div onclick="switchPage(5)" id="nav-5" class="nav-btn w-full py-4 flex flex-col items-center justify-center group relative">
+        <i class="fa-solid fa-flask text-lg"></i>
+        <span class="text-[8px] opacity-0 group-hover:opacity-100 absolute left-14 bg-slate-800 px-2 py-1 rounded text-white pointer-events-none whitespace-nowrap z-50">Intelligence Tools</span>
+    </div>
+</div>
+
+<!-- ===== MODAL: CACHE ===== -->
+<div id="cache-modal" class="hidden modal-overlay">
+    <div class="bg-panel border border-slate-700 p-8 rounded-2xl shadow-2xl max-w-md w-full">
+        <h2 class="text-xl font-black text-white tracking-widest uppercase mb-2"><i class="fa-solid fa-server text-accent mr-3"></i>Cache Manager</h2>
+        <p class="text-[10px] text-slate-400 font-mono mb-6">ChromaDB auto-deduplicates via hash IDs. Safe to re-run.</p>
+        <div class="space-y-3">
+            <button onclick="triggerIndex(200)" class="w-full bg-slate-800 hover:border-accent text-slate-300 p-4 rounded-xl border border-slate-700 transition flex flex-col items-start group">
+                <span class="font-bold tracking-widest uppercase text-xs group-hover:text-accent"><i class="fa-solid fa-vial mr-2"></i>Test Batch (200 files)</span>
+                <span class="text-[9px] font-mono mt-1 text-slate-500">Quick test — indexes 200 files</span>
+            </button>
+            <button onclick="triggerIndex(1000)" class="w-full bg-slate-800 hover:border-warning text-slate-300 p-4 rounded-xl border border-slate-700 transition flex flex-col items-start group">
+                <span class="font-bold tracking-widest uppercase text-xs group-hover:text-warning"><i class="fa-solid fa-layer-group mr-2"></i>Medium Matrix (1,000 files)</span>
+                <span class="text-[9px] font-mono mt-1 text-slate-500">Half codebase, safe on constrained systems</span>
+            </button>
+            <button onclick="triggerIndex(null)" class="w-full bg-[#030712] hover:border-danger text-slate-300 p-4 rounded-xl border border-danger/30 transition flex flex-col items-start group">
+                <span class="font-bold tracking-widest uppercase text-xs text-danger"><i class="fa-solid fa-dumpster-fire mr-2"></i>Global Vault Matrix (full)</span>
+                <span class="text-[9px] font-mono mt-1 text-slate-500">All files. Hash IDs prevent duplicates.</span>
+            </button>
+        </div>
+        <button onclick="closeModal('cache-modal')" class="mt-6 w-full text-center text-[10px] text-slate-500 hover:text-white uppercase tracking-widest underline cursor-pointer">Cancel</button>
+    </div>
+</div>
+
+<!-- ===== MODAL: INDEXING FILES ===== -->
+<div id="files-modal" class="hidden modal-overlay">
+    <div class="bg-panel border border-slate-700 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+        <div class="flex justify-between items-center p-6 border-b border-slate-700">
+            <div>
+                <h2 class="text-lg font-black text-white tracking-widest uppercase"><i class="fa-solid fa-list-check text-accent mr-2"></i>Indexing File List</h2>
+                <p id="files-modal-stats" class="text-[9px] text-slate-500 font-mono mt-0.5">Loading...</p>
+            </div>
+            <button onclick="closeModal('files-modal')" class="text-slate-600 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-4">
+            <div id="files-modal-list" class="space-y-0.5 text-[9px] font-mono"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL: QUERY DETAIL ===== -->
+<div id="query-modal" class="hidden modal-overlay">
+    <div class="bg-panel border border-slate-700 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col">
+        <div class="flex justify-between items-center p-5 border-b border-slate-700 flex-shrink-0">
+            <div>
+                <h2 class="text-base font-black text-white tracking-widest uppercase"><i class="fa-solid fa-magnifying-glass text-accent mr-2"></i>Query Detail</h2>
+                <p id="qd-meta" class="text-[9px] text-slate-500 font-mono mt-0.5"></p>
+            </div>
+            <button onclick="closeModal('query-modal')" class="text-slate-600 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-5 space-y-4">
+            <div>
+                <div class="text-[9px] text-slate-500 uppercase tracking-widest font-bold mb-1">Query</div>
+                <div id="qd-query" class="bg-slate-800 p-3 rounded text-sm text-slate-200 font-mono"></div>
+            </div>
+            <div>
+                <div class="text-[9px] text-slate-500 uppercase tracking-widest font-bold mb-1">Response</div>
+                <div id="qd-response" class="bg-slate-900 p-4 rounded text-sm text-slate-300 markdown-body max-h-60 overflow-y-auto border border-slate-800"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <div class="text-[9px] text-slate-500 uppercase tracking-widest font-bold mb-1">Timing</div>
+                    <div id="qd-phases" class="space-y-1 text-[9px] font-mono"></div>
+                </div>
+                <div>
+                    <div class="text-[9px] text-slate-500 uppercase tracking-widest font-bold mb-1">Sources</div>
+                    <div id="qd-sources" class="space-y-0.5 text-[9px] font-mono text-slate-400 max-h-32 overflow-y-auto"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL: HALLUCINATION DETAIL ===== -->
+<div id="halluc-modal" class="hidden modal-overlay">
+    <div class="bg-panel border border-slate-700 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+        <div class="flex justify-between items-center p-5 border-b border-slate-700 flex-shrink-0">
+            <h2 class="text-base font-black text-white tracking-widest uppercase"><i class="fa-solid fa-triangle-exclamation text-danger mr-2"></i>Hallucination Detail</h2>
+            <button onclick="closeModal('halluc-modal')" class="text-slate-600 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-5 space-y-4">
+            <div>
+                <div class="text-[9px] text-slate-500 uppercase tracking-widest font-bold mb-1">Raw Generation</div>
+                <div id="hd-raw" class="bg-slate-900 p-3 rounded text-[10px] font-mono text-slate-300 max-h-48 overflow-y-auto border border-slate-800 whitespace-pre-wrap"></div>
+            </div>
+            <div>
+                <div class="text-[9px] text-slate-500 uppercase tracking-widest font-bold mb-1">Violation Details</div>
+                <div id="hd-violation" class="bg-red-950/30 p-3 rounded text-[10px] font-mono text-red-300 border border-red-900/40 whitespace-pre-wrap"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL: DELETE CONFIRM ===== -->
+<div id="delete-confirm-modal" class="hidden modal-overlay">
+    <div class="bg-panel border border-slate-700 p-6 rounded-2xl shadow-2xl max-w-sm w-full">
+        <h2 class="text-base font-black text-white tracking-widest uppercase mb-2"><i class="fa-solid fa-trash text-danger mr-2"></i>Confirm Delete</h2>
+        <p id="delete-confirm-msg" class="text-[11px] text-slate-400 font-mono mb-6">Are you sure?</p>
+        <div class="flex gap-3">
+            <button id="delete-confirm-yes" class="flex-1 bg-red-900/40 hover:bg-red-800/60 text-danger font-bold uppercase text-[10px] py-2 rounded border border-red-800/50 transition">Delete</button>
+            <button onclick="closeModal('delete-confirm-modal')" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold uppercase text-[10px] py-2 rounded border border-slate-700 transition">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== PAGE 1: COMMAND CENTER ===== -->
+<div id="page-1" class="flex flex-1 w-full h-full overflow-hidden">
+
+    <!-- LEFT PANEL -->
+    <div class="w-[380px] flex-shrink-0 bg-panel border-r border-slate-800 p-3 flex flex-col gap-2.5 overflow-y-auto">
+        <div class="flex-shrink-0 pt-1 pb-0.5">
+            <h1 class="text-lg font-black text-white tracking-widest">COMMAND CENTER</h1>
+            <p class="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Node Telemetry V9</p>
+        </div>
+
+        <!-- HW Telemetry -->
+        <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800/50 flex-shrink-0">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Hardware</span>
+                <span class="text-[8px] bg-slate-800 px-1.5 py-0.5 rounded text-accent font-semibold border border-slate-700">M-Series SoC</span>
+            </div>
+            <div class="mb-2">
+                <div class="flex justify-between text-[10px] font-mono mb-1">
+                    <span class="text-slate-400">CPU</span><span id="p1-cpu-pct" class="font-bold text-safe">0%</span>
+                </div>
+                <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                    <div id="p1-cpu-bar" class="bg-safe h-full w-0 transition-all duration-500"></div>
+                </div>
+            </div>
+            <div class="flex justify-between text-[10px] font-mono mb-1">
+                <span class="text-slate-400">Unified Memory</span>
+                <div><span id="p1-ram-gb" class="text-slate-500 mr-2">0/0 GB</span><span id="p1-ram-pct" class="font-bold text-indigo-400">0%</span></div>
+            </div>
+            <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden flex border border-slate-700/30 mb-1.5">
+                <div id="bar-active"   class="mem-seg bg-blue-500"    style="width:0%" title="Active (apps)"></div>
+                <div id="bar-wired"    class="mem-seg bg-purple-500"  style="width:0%" title="Wired (GPU/Ollama)"></div>
+                <div id="bar-inactive" class="mem-seg bg-slate-600"   style="width:0%" title="Inactive (reclaimable)"></div>
+                <div id="bar-free"     class="mem-seg bg-emerald-600" style="width:0%" title="Free"></div>
+            </div>
+            <div class="grid grid-cols-4 gap-1 text-[8px] font-mono text-center mb-2">
+                <div class="bg-slate-800/50 rounded p-1 border border-blue-900/30"><div id="p1-mem-active" class="text-blue-400 font-bold">—</div><div class="text-slate-600">Active</div></div>
+                <div class="bg-slate-800/50 rounded p-1 border border-purple-900/30"><div id="p1-mem-wired" class="text-purple-400 font-bold">—</div><div class="text-slate-600">Wired⚠</div></div>
+                <div class="bg-slate-800/50 rounded p-1 border border-slate-700/30"><div id="p1-mem-inactive" class="text-slate-400 font-bold">—</div><div class="text-slate-600">Inactive</div></div>
+                <div class="bg-slate-800/50 rounded p-1 border border-emerald-900/30"><div id="p1-mem-free" class="text-emerald-400 font-bold">—</div><div class="text-slate-600">Free</div></div>
+            </div>
+            <div class="flex items-center gap-2 text-[8px] font-mono">
+                <span class="text-slate-600">Guardrail:</span>
+                <div class="flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden border border-slate-700/30">
+                    <div id="p1-guardrail-bar" class="bg-safe h-full transition-all duration-500" style="width:0%"></div>
+                </div>
+                <span id="p1-guardrail-txt" class="text-emerald-400 w-16 text-right">—GB avail</span>
+            </div>
+            <div class="text-[8px] font-mono text-slate-600 mt-1">
+                My session: <span id="p1-my-rss" class="text-slate-500">—</span>GB · Other users: <span id="p1-other-rss" class="text-slate-500">—</span>GB · VB server: <span id="p1-srv-rss" class="text-slate-500">—</span>MB
+            </div>
+        </div>
+
+        <!-- Ollama Model Manager -->
+        <div class="bg-slate-900/90 p-3 rounded-xl border border-purple-900/30 flex-shrink-0">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-[10px] font-bold text-purple-400 uppercase tracking-widest flex items-center gap-2">
+                    <i class="fa-solid fa-brain"></i> GPU Model Manager
+                </span>
+                <button onclick="evictAllModels()" class="text-[8px] bg-red-900/30 hover:bg-red-800/50 text-red-400 px-2 py-0.5 rounded border border-red-800/40 transition font-bold uppercase tracking-widest">
+                    <i class="fa-solid fa-trash-can mr-1"></i>Evict All
+                </button>
+            </div>
+            <div id="ollama-loaded" class="space-y-1.5 mb-2">
+                <div class="text-[8px] text-slate-700 italic">Checking...</div>
+            </div>
+            <div class="border-t border-slate-800 pt-2 mt-1">
+                <div class="text-[8px] text-slate-600 uppercase tracking-widest mb-1.5 font-bold flex justify-between items-center">
+                    <span>Available Models</span>
+                    <span id="ollama-wired-total" class="text-purple-500">—GB wired</span>
+                </div>
+                <div id="ollama-available" class="space-y-1.5"></div>
+            </div>
+        </div>
+
+        <!-- Port Bindings -->
+        <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800/50 flex-shrink-0">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-network-wired text-warning"></i> Port Bindings
+            </div>
+            <div class="space-y-1 text-[10px] font-mono text-slate-400">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-1">
+                    <span><i class="fa-solid fa-server mr-2 text-slate-600"></i>FastAPI <span class="text-[8px] text-slate-700">:dynamic</span></span>
+                    <span id="port-fastapi" class="text-slate-500">—</span>
+                </div>
+                <div class="flex justify-between items-center border-b border-slate-800 pb-1">
+                    <span><i class="fa-solid fa-brain mr-2 text-slate-600"></i>Ollama <span class="text-[8px] text-slate-700">:11434</span></span>
+                    <span id="port-ollama" class="text-slate-500">—</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span><i class="fa-solid fa-book mr-2 text-slate-600"></i>Obsidian <span class="text-[8px] text-slate-700">:27124</span></span>
+                    <span id="port-obsidian" class="text-slate-500">—</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ChromaDB + Indexing -->
+        <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800/50 flex-shrink-0">
+            <div class="flex justify-between text-[10px] text-slate-400 uppercase font-bold mb-2 border-b border-slate-800 pb-2">
+                <span><i class="fa-solid fa-database mr-1 text-accent"></i> ChromaDB Matrix</span>
+                <span id="p1-chunks" class="text-accent font-mono">0 Chunks</span>
+            </div>
+            <div id="p1-active-idx" class="hidden mb-2">
+                <div class="flex items-center gap-2 mb-1">
+                    <div class="w-1.5 h-1.5 rounded-full bg-accent flash-warning" id="p1-dot"></div>
+                    <span class="text-[9px] text-accent uppercase font-bold tracking-widest flex-1" id="p1-idx-status">Indexing</span>
+                    <button onclick="openFilesModal()" class="text-[7px] bg-slate-800 hover:bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 transition">
+                        <i class="fa-solid fa-list"></i> Files
+                    </button>
+                </div>
+                <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-1 border border-slate-700/30">
+                    <div id="p1-idx-progress" class="bg-accent h-full transition-all duration-300" style="width:0%"></div>
+                </div>
+                <div class="flex justify-between text-[8px] font-mono text-slate-500 mb-1">
+                    <span id="p1-idx-file" class="truncate flex-1 pr-2 text-slate-600">—</span>
+                    <span id="p1-idx-count" class="flex-shrink-0">0/0</span>
+                </div>
+                <div class="bg-slate-800/60 p-1.5 rounded border border-slate-700/30 text-[8px] font-mono text-slate-500 grid grid-cols-4 gap-1">
+                    <span>CPU <span id="idx-cpu-draw" class="text-yellow-400">—</span></span>
+                    <span>Avail <span id="idx-avail-draw" class="text-cyan-400">—</span>G</span>
+                    <span><span id="idx-fps" class="text-accent">—</span> f/s</span>
+                    <span>ETA <span id="idx-eta" class="text-orange-400">—</span></span>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button id="p1-btn-index" onclick="openModal('cache-modal')" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold uppercase text-[10px] tracking-widest py-2 rounded border border-slate-700 transition-colors">
+                    <i class="fa-solid fa-bolt mr-1 text-accent"></i> UPDATE VAULT CACHE
+                </button>
+                <button id="p1-btn-stop" onclick="stopIndexing()" class="hidden bg-red-900/30 hover:bg-red-800/50 text-danger font-bold uppercase text-[10px] tracking-widest px-3 py-2 rounded border border-red-800/50 transition-colors">
+                    <i class="fa-solid fa-stop"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Process Table -->
+        <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800/50 flex-shrink-0">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Processes</span>
+                <div class="flex gap-1">
+                    <span id="tab-my"    onclick="showProcTab('my')"    class="tab-btn active">My Session</span>
+                    <span id="tab-other" onclick="showProcTab('other')" class="tab-btn">Other Users</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-[9px] font-mono text-slate-400">
+                <div class="bg-slate-800/60 p-2 rounded border border-slate-700/50">
+                    <div class="text-accent uppercase tracking-widest font-bold mb-1.5 border-b border-slate-700 pb-1 text-[8px]">CPU</div>
+                    <div id="p1-top-cpu" class="space-y-0.5">—</div>
+                </div>
+                <div class="bg-slate-800/60 p-2 rounded border border-slate-700/50">
+                    <div class="text-indigo-400 uppercase tracking-widest font-bold mb-1.5 border-b border-slate-700 pb-1 text-[8px]">RAM</div>
+                    <div id="p1-top-ram" class="space-y-0.5">—</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CENTER PANEL: Chat -->
+    <div class="flex-1 flex flex-col bg-darkblue relative border-r border-slate-800 min-w-0">
+        <div class="flex items-center justify-between px-6 py-2 border-b border-slate-800 bg-[#02060f] flex-shrink-0">
+            <div class="flex items-center gap-3">
+                <span class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Chat</span>
+                <span id="p1-mem-turns-badge" class="hidden text-[8px] bg-indigo-900/40 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-800/40 font-mono">0 turns</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="exportToObsidian()" class="text-[8px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-accent px-2 py-1 rounded border border-slate-700 transition font-bold uppercase tracking-widest">
+                    <i class="fa-solid fa-file-export mr-1"></i>Export Session
+                </button>
+                <button onclick="clearMemory()" class="text-[8px] bg-slate-800 hover:bg-red-900/30 text-slate-400 hover:text-danger px-2 py-1 rounded border border-slate-700 transition font-bold uppercase tracking-widest">
+                    <i class="fa-solid fa-broom mr-1"></i>Clear Memory
+                </button>
+            </div>
+        </div>
+        <div id="chat-history" class="flex-1 overflow-y-auto p-8 flex flex-col gap-6">
+            <div class="bg-slate-900 p-6 rounded-2xl rounded-tl-sm ai-msg shadow-lg max-w-4xl text-sm leading-relaxed text-slate-300 border border-slate-800/50">
+                <strong>VectorMap v1.0 — Online.</strong><br>
+                Hardware guardrails active · Hallucination validation engaged · SQLite query history enabled.<br><br>
+                <span class="text-slate-500 text-xs">Queries can take 30–120s depending on model and context size. The LangGraph trace above will show real-time progress.</span><br><br>
+                <em>Try: "what does the drive off the cliff sensor do?"</em>
+            </div>
+        </div>
+        <div id="typing-indicator" class="hidden px-8 pb-4">
+            <div class="flex items-center gap-3 text-accent text-[10px] font-bold uppercase tracking-widest bg-slate-900/80 inline-flex px-4 py-2 rounded-full border border-sky-900/30 backdrop-blur-sm">
+                <i class="fa-solid fa-satellite-dish fa-spin"></i>
+                <span id="typing-status-txt">LangGraph Executing…</span>
+                <span class="typing-loader"></span>
+            </div>
+        </div>
+        <div class="p-6 flex gap-4 bg-[#02060f] border-t border-slate-800">
+            <input type="text" id="user-input" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-5 py-3 outline-none focus:border-accent text-white font-mono text-sm" placeholder="Ask VectorMap…" onkeypress="if(event.key==='Enter')sendMsg()">
+            <button onclick="sendMsg()" class="bg-accent hover:bg-sky-400 text-slate-900 font-black tracking-widest uppercase px-6 py-3 rounded-xl transition-all">EXECUTE</button>
+        </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="w-[320px] flex-shrink-0 bg-panel p-3 flex flex-col gap-3 overflow-y-auto">
+        <!-- LLM Engine -->
+        <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800/50">
+            <div class="flex justify-between items-center mb-1.5">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <i class="fa-solid fa-microchip text-indigo-400"></i> LLM Engine
+                </div>
+                <button onclick="switchPage(2)" class="text-[8px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-accent px-2 py-0.5 rounded border border-slate-700 transition font-bold uppercase tracking-widest">
+                    <i class="fa-solid fa-sliders mr-1"></i>Configure
+                </button>
+            </div>
+            <div class="flex items-center gap-2">
+                <div id="p1-active-model" class="text-[11px] font-mono text-accent font-bold flex-1">qwen2.5-coder:7b</div>
+                <div id="p1-model-applied" class="hidden text-[8px] text-emerald-400 font-mono"><i class="fa-solid fa-check mr-1"></i>applied</div>
+            </div>
+            <div class="text-[8px] text-slate-600 mt-0.5 font-mono">temp <span id="p1-cfg-temp" class="text-slate-500">0.1</span> · k=<span id="p1-cfg-k" class="text-slate-500">8</span> · ctx <span id="p1-cfg-ctx" class="text-slate-500">20k</span></div>
+        </div>
+
+        <!-- Token Payload -->
+        <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800/50 flex-shrink-0">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-chart-pie text-emerald-400"></i> Token Payload
+            </div>
+            <div class="w-full h-4 rounded-full overflow-hidden flex border border-slate-700/30 mb-2 bg-slate-800">
+                <div id="tok-bar-sys"  class="bg-slate-500 h-full transition-all duration-500" style="width:6%"></div>
+                <div id="tok-bar-ctx"  class="bg-sky-500 h-full transition-all duration-500" style="width:0%"></div>
+                <div id="tok-bar-pmt"  class="bg-amber-400 h-full transition-all duration-500" style="width:0%"></div>
+                <div id="tok-bar-free" class="bg-slate-800/0 h-full transition-all duration-500" style="width:94%"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-1 text-[8px] font-mono">
+                <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded bg-slate-500 flex-shrink-0"></div><span class="text-slate-400">System <span id="tok-sys" class="text-slate-300 font-bold">2k</span></span></div>
+                <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded bg-sky-500 flex-shrink-0"></div><span class="text-slate-400">Context <span id="tok-ctx" class="text-slate-300 font-bold">0</span></span></div>
+                <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded bg-amber-400 flex-shrink-0"></div><span class="text-slate-400">Prompt <span id="tok-pmt" class="text-slate-300 font-bold">0</span></span></div>
+                <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded bg-emerald-500 flex-shrink-0"></div><span class="text-slate-400">Free <span id="tok-free" class="text-emerald-400 font-bold">32k</span></span></div>
+            </div>
+            <div class="mt-2 text-[8px] font-mono text-slate-600 border-t border-slate-800 pt-1.5">
+                Context window: <span id="tok-limit" class="text-slate-500">32,768</span> · Used: <span id="tok-used-pct" class="text-slate-500">0%</span>
+            </div>
+        </div>
+
+        <!-- Mini Semantic Map -->
+        <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800/50 flex-shrink-0">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-map-pin text-accent"></i> Semantic Map
+                <span class="ml-auto text-[7px] text-slate-600 font-mono">query sources highlighted</span>
+            </div>
+            <div id="p1-minimap" style="height:130px" class="rounded overflow-hidden border border-slate-800 bg-darkblue">
+                <div class="h-full flex flex-col items-center justify-center text-slate-700 text-[9px] font-mono gap-1">
+                    <i class="fa-solid fa-map text-slate-800 text-2xl"></i>
+                    <span>Generate PCA on Vector Map page</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Context sources -->
+        <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800/50 flex-shrink-0">
+            <div class="text-[10px] font-bold text-white uppercase tracking-widest mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-file-code text-accent"></i> Retrieved Context
+            </div>
+            <div id="context-container" class="flex flex-col gap-2">
+                <div class="text-center text-slate-600 font-mono text-xs italic mt-2">Awaiting query.</div>
+            </div>
+        </div>
+
+        <!-- Live Log Feed -->
+        <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800/50 flex-shrink-0">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-terminal text-yellow-400"></i> Live Log Feed
+                <span class="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 flash-warning"></span>
+            </div>
+            <div id="p1-log-feed" class="space-y-0.5 max-h-36 overflow-y-auto font-mono text-[8px]">
+                <div class="text-slate-700 italic">Waiting for events...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== PAGE 2: AGENTIC FORGE ===== -->
+<div id="page-2" class="hidden flex-1 w-full h-full overflow-hidden flex">
+
+    <!-- LEFT: Pipeline + Templates + Services -->
+    <div class="w-[300px] flex-shrink-0 bg-panel border-r border-slate-800 p-4 flex flex-col gap-3 overflow-y-auto">
+        <div>
+            <h2 class="text-lg font-black text-white tracking-widest">AGENTIC FORGE</h2>
+            <p class="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Pipeline Control V9</p>
+        </div>
+
+        <!-- LangGraph Topology -->
+        <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800/50">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-diagram-project text-accent"></i> Pipeline Topology
+                <span id="lg-active-label" class="ml-auto text-[8px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-500">IDLE</span>
+            </div>
+            <svg viewBox="0 0 240 300" class="w-full" style="max-height:260px">
+                <defs>
+                    <marker id="arr" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#334155"/></marker>
+                    <marker id="arr-active" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#38bdf8"/></marker>
+                    <filter id="glow"><feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                </defs>
+                <line x1="120" y1="56" x2="120" y2="92" class="lg-edge" id="edge-r-g"/>
+                <line x1="120" y1="136" x2="120" y2="180" class="lg-edge" id="edge-g-v"/>
+                <line x1="120" y1="224" x2="120" y2="262" class="lg-edge" id="edge-v-end"/>
+                <path d="M 170 202 C 215 202 215 114 170 114" class="lg-edge" id="edge-loop" stroke-dasharray="4,3"/>
+                <text x="218" y="160" fill="#475569" font-size="8" font-family="monospace" text-anchor="middle">retry</text>
+                <rect id="node-retrieve" x="60" y="20" width="120" height="36" class="lg-node"/>
+                <text x="120" y="35" class="lg-label" id="label-retrieve">RETRIEVE</text>
+                <text x="120" y="47" fill="#334155" font-size="8" font-family="monospace" text-anchor="middle" id="sub-retrieve">ChromaDB · k=8 · MiniLM</text>
+                <rect id="node-generate" x="60" y="104" width="120" height="36" class="lg-node"/>
+                <text x="120" y="119" class="lg-label" id="label-generate">GENERATE</text>
+                <text x="120" y="131" fill="#334155" font-size="8" font-family="monospace" text-anchor="middle" id="sub-generate">Ollama · SQLite cache</text>
+                <rect id="node-validate" x="60" y="188" width="120" height="36" class="lg-node"/>
+                <text x="120" y="203" class="lg-label" id="label-validate">VALIDATE</text>
+                <text x="120" y="215" fill="#334155" font-size="8" font-family="monospace" text-anchor="middle">WikiLink · hallucination</text>
+                <rect id="node-end" x="80" y="262" width="80" height="24" rx="12" fill="#0a1a0a" stroke="#10b981" stroke-width="1"/>
+                <text x="120" y="274" fill="#10b981" font-size="9" font-family="monospace" text-anchor="middle" font-weight="bold">END ✓</text>
+                <text id="node-elapsed-retrieve" x="190" y="42" fill="#38bdf8" font-size="8" font-family="monospace" text-anchor="start" opacity="0"></text>
+                <text id="node-elapsed-generate" x="190" y="126" fill="#38bdf8" font-size="8" font-family="monospace" text-anchor="start" opacity="0"></text>
+                <text id="node-elapsed-validate" x="190" y="210" fill="#38bdf8" font-size="8" font-family="monospace" text-anchor="start" opacity="0"></text>
+            </svg>
+        </div>
+
+        <!-- Query Template Library -->
+        <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800/50">
+            <div class="flex justify-between items-center mb-2">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <i class="fa-solid fa-bookmark text-warning"></i> Query Templates
+                </div>
+                <button onclick="showAddTemplate()" class="text-[8px] bg-slate-800 hover:bg-slate-700 text-slate-400 px-2 py-0.5 rounded border border-slate-700 transition font-bold uppercase">
+                    <i class="fa-solid fa-plus mr-1"></i>Add
+                </button>
+            </div>
+            <div id="template-add-form" class="hidden mb-2 space-y-1.5">
+                <input id="tpl-name" type="text" placeholder="Template name..." class="w-full bg-slate-800 border border-slate-700 rounded text-[9px] text-slate-300 p-1.5 font-mono outline-none focus:border-accent">
+                <textarea id="tpl-text" rows="2" placeholder="Template text with {placeholder}..." class="w-full bg-slate-800 border border-slate-700 rounded text-[9px] text-slate-300 p-1.5 font-mono outline-none focus:border-accent resize-none"></textarea>
+                <div class="flex gap-1">
+                    <button onclick="saveTemplate()" class="flex-1 bg-accent/10 hover:bg-accent/20 text-accent text-[8px] font-bold uppercase py-1 rounded border border-accent/30 transition">Save</button>
+                    <button onclick="hideAddTemplate()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-400 text-[8px] font-bold uppercase py-1 rounded border border-slate-700 transition">Cancel</button>
+                </div>
+            </div>
+            <div id="template-list" class="space-y-1.5 max-h-40 overflow-y-auto">
+                <div class="text-[8px] text-slate-700 italic">Loading templates...</div>
+            </div>
+        </div>
+
+        <!-- Active Services Status -->
+        <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800/50">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-plug text-safe"></i> Active Services
+            </div>
+            <div class="space-y-1.5 text-[9px] font-mono">
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-500"><i class="fa-solid fa-database mr-1.5 text-sky-600"></i>ChromaDB</span>
+                    <span id="svc-chroma" class="text-safe">— chunks</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-500"><i class="fa-solid fa-vector-square mr-1.5 text-indigo-600"></i>Embeddings</span>
+                    <span class="text-indigo-400 text-[8px]">all-MiniLM-L6-v2</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-500"><i class="fa-solid fa-brain mr-1.5 text-purple-600"></i>LLM (Ollama)</span>
+                    <span id="svc-llm" class="text-purple-400">—</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-500"><i class="fa-solid fa-bolt mr-1.5 text-yellow-600"></i>SQLite Cache</span>
+                    <span class="text-yellow-400 text-[8px]">langchain_cache.db</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-500"><i class="fa-solid fa-clock-rotate-left mr-1.5 text-orange-600"></i>Query History</span>
+                    <span id="svc-qhistory" class="text-orange-400">query_history.db</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT: Tabs -->
+    <div class="flex-1 flex flex-col p-4 gap-3 overflow-hidden min-w-0">
+        <div class="flex gap-1 flex-shrink-0 flex-wrap">
+            <span onclick="switchP2Tab('config')"        id="p2t-config"        class="tab-btn active">Config</span>
+            <span onclick="switchP2Tab('benchmark')"     id="p2t-benchmark"     class="tab-btn">Benchmark</span>
+            <span onclick="switchP2Tab('inject')"        id="p2t-inject"        class="tab-btn">Inject</span>
+            <span onclick="switchP2Tab('resources')"     id="p2t-resources"     class="tab-btn">Resources</span>
+            <span onclick="switchP2Tab('history')"       id="p2t-history"       class="tab-btn">History</span>
+            <span onclick="switchP2Tab('hallucinations')" id="p2t-hallucinations" class="tab-btn">Hallucinations</span>
+            <span onclick="switchP2Tab('trace')"         id="p2t-trace"         class="tab-btn">Last Trace</span>
+        </div>
+
+        <!-- Config Tab -->
+        <div id="p2-tab-config" class="flex-1 overflow-y-auto">
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800/50">
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-accent"></i> Agent Configuration
+                    </div>
+                    <div class="space-y-2.5">
+                        <div>
+                            <label class="text-[8px] text-slate-500 uppercase tracking-widest font-bold block mb-1">LLM Model</label>
+                            <select id="cfg-model" class="w-full bg-slate-800 border border-slate-700 rounded text-[10px] text-accent p-1.5 font-mono outline-none">
+                                <option>qwen2.5-coder:7b</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[8px] text-slate-500 uppercase tracking-widest font-bold block mb-1">Temperature</label>
+                                <input id="cfg-temp" type="number" step="0.05" min="0" max="1" value="0.1" class="w-full bg-slate-800 border border-slate-700 rounded text-[10px] text-accent p-1.5 font-mono outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[8px] text-slate-500 uppercase tracking-widest font-bold block mb-1">Retrieval K</label>
+                                <input id="cfg-k" type="number" min="1" max="20" value="8" class="w-full bg-slate-800 border border-slate-700 rounded text-[10px] text-accent p-1.5 font-mono outline-none">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[8px] text-slate-500 uppercase tracking-widest font-bold block mb-1">Max Retries</label>
+                                <input id="cfg-attempts" type="number" min="1" max="5" value="3" class="w-full bg-slate-800 border border-slate-700 rounded text-[10px] text-accent p-1.5 font-mono outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[8px] text-slate-500 uppercase tracking-widest font-bold block mb-1">Context Budget</label>
+                                <input id="cfg-budget" type="number" step="1000" min="4000" max="28000" value="20000" class="w-full bg-slate-800 border border-slate-700 rounded text-[10px] text-accent p-1.5 font-mono outline-none">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-[8px] text-slate-500 uppercase tracking-widest font-bold block mb-1">Memory Turns</label>
+                            <input id="cfg-memory-turns" type="number" min="0" max="20" value="5" class="w-full bg-slate-800 border border-slate-700 rounded text-[10px] text-accent p-1.5 font-mono outline-none">
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <label class="text-[8px] text-slate-500 uppercase tracking-widest font-bold">Web Search</label>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="cfg-web-search" class="sr-only peer">
+                                <div class="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-accent"></div>
+                            </label>
+                        </div>
+                        <div>
+                            <label class="text-[8px] text-slate-500 uppercase tracking-widest font-bold block mb-1">System Prompt Extension</label>
+                            <textarea id="cfg-sysprompt" rows="3" placeholder="Optional: extend the agent's system prompt..." class="w-full bg-slate-800 border border-slate-700 rounded text-[9px] text-slate-300 p-2 font-mono outline-none focus:border-accent resize-none placeholder-slate-700"></textarea>
+                        </div>
+                        <button onclick="saveConfig()" class="w-full bg-accent/10 hover:bg-accent/20 text-accent font-bold uppercase text-[10px] tracking-widest py-2 rounded border border-accent/30 transition">
+                            <i class="fa-solid fa-floppy-disk mr-1"></i> Apply Config
+                        </button>
+                        <div id="cfg-status" class="text-[8px] font-mono text-center h-3"></div>
+                    </div>
+                </div>
+                <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800/50">
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-gauge-high text-warning"></i> Live Resource Inspector
+                    </div>
+                    <div class="space-y-2.5 text-[10px] font-mono">
+                        <div>
+                            <div class="flex justify-between mb-1"><span class="text-slate-500">CPU</span><span id="p2-cpu" class="text-safe font-bold">0%</span></div>
+                            <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden"><div id="p2-cpu-bar" class="bg-safe h-full w-0 transition-all"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1"><span class="text-slate-500">Available RAM</span><span id="p2-avail" class="text-cyan-400 font-bold">—GB</span></div>
+                            <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden"><div id="p2-avail-bar" class="bg-cyan-500 h-full transition-all" style="width:0%"></div></div>
+                        </div>
+                        <div class="border-t border-slate-800 pt-2 space-y-1.5">
+                            <div class="flex justify-between"><span class="text-slate-600">VB Server RSS</span><span id="p2-vb-rss" class="text-slate-300 font-bold">—MB</span></div>
+                            <div class="flex justify-between"><span class="text-slate-600">GPU Wired</span><span id="p2-gpu-wired" class="text-purple-400 font-bold">—GB</span></div>
+                            <div class="flex justify-between"><span class="text-slate-600">Ollama Loaded</span><span id="p2-ollama-loaded" class="text-purple-300">—GB</span></div>
+                            <div class="flex justify-between"><span class="text-slate-600">Other Users RSS</span><span id="p2-other-rss" class="text-orange-400">—GB</span></div>
+                        </div>
+                        <div id="p2-guardrail-box" class="bg-slate-800/60 rounded p-2 text-[8px] border border-slate-700/30 text-slate-500">
+                            Guardrail: <span id="p2-guard-txt" class="text-emerald-400 font-bold">READY</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Benchmark Tab -->
+        <div id="p2-tab-benchmark" class="hidden flex-1 overflow-y-auto">
+            <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800/50">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-bar text-accent"></i> A/B Model Benchmark
+                </div>
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                        <label class="text-[8px] text-slate-500 uppercase tracking-widest font-bold block mb-1">Model A</label>
+                        <select id="bench-model-a" class="w-full bg-slate-800 border border-slate-700 rounded text-[10px] text-accent p-1.5 font-mono outline-none"></select>
+                    </div>
+                    <div>
+                        <label class="text-[8px] text-slate-500 uppercase tracking-widest font-bold block mb-1">Model B</label>
+                        <select id="bench-model-b" class="w-full bg-slate-800 border border-slate-700 rounded text-[10px] text-accent p-1.5 font-mono outline-none"></select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="text-[8px] text-slate-500 uppercase tracking-widest font-bold block mb-1">Benchmark Prompt</label>
+                    <textarea id="bench-prompt" rows="3" placeholder="Enter a query to benchmark both models..." class="w-full bg-slate-800 border border-slate-700 rounded text-[9px] text-slate-300 p-2 font-mono outline-none focus:border-accent resize-none placeholder-slate-700"></textarea>
+                </div>
+                <button onclick="runBenchmark()" class="w-full bg-accent/10 hover:bg-accent/20 text-accent font-bold uppercase text-[10px] tracking-widest py-2 rounded border border-accent/30 transition mb-3">
+                    <i class="fa-solid fa-play mr-1"></i> Run Benchmark
+                </button>
+                <div id="bench-results" class="hidden">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div id="bench-result-a" class="bg-slate-800/60 p-3 rounded border border-slate-700/50">
+                            <div class="text-[8px] text-accent font-bold uppercase mb-1">Model A</div>
+                            <div id="bench-a-name" class="text-[9px] font-mono text-slate-300 mb-1">—</div>
+                            <div id="bench-a-preview" class="text-[8px] text-slate-400 max-h-20 overflow-hidden mb-2">—</div>
+                            <div class="grid grid-cols-2 gap-1 text-[8px] font-mono">
+                                <div class="text-slate-600">Time: <span id="bench-a-ms" class="text-slate-300">—</span></div>
+                                <div class="text-slate-600">t/s: <span id="bench-a-tps" class="text-slate-300">—</span></div>
+                            </div>
+                            <div class="mt-2 w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                                <div id="bench-a-bar" class="bg-accent h-full rounded-full transition-all" style="width:0%"></div>
+                            </div>
+                        </div>
+                        <div id="bench-result-b" class="bg-slate-800/60 p-3 rounded border border-slate-700/50">
+                            <div class="text-[8px] text-purple-400 font-bold uppercase mb-1">Model B</div>
+                            <div id="bench-b-name" class="text-[9px] font-mono text-slate-300 mb-1">—</div>
+                            <div id="bench-b-preview" class="text-[8px] text-slate-400 max-h-20 overflow-hidden mb-2">—</div>
+                            <div class="grid grid-cols-2 gap-1 text-[8px] font-mono">
+                                <div class="text-slate-600">Time: <span id="bench-b-ms" class="text-slate-300">—</span></div>
+                                <div class="text-slate-600">t/s: <span id="bench-b-tps" class="text-slate-300">—</span></div>
+                            </div>
+                            <div class="mt-2 w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                                <div id="bench-b-bar" class="bg-purple-500 h-full rounded-full transition-all" style="width:0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inject Tab -->
+        <div id="p2-tab-inject" class="hidden flex-1 overflow-y-auto">
+            <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800/50">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-syringe text-warning"></i> Manual Context Injection
+                </div>
+                <p class="text-[9px] text-slate-500 font-mono mb-3">Paste file content directly. When "Use Injected Context" is ON, the next chat query will use this content instead of querying ChromaDB.</p>
+                <textarea id="inject-content" rows="10" placeholder="Paste file content or any context here..." class="w-full bg-slate-800 border border-slate-700 rounded text-[9px] text-slate-300 p-3 font-mono outline-none focus:border-accent resize-none placeholder-slate-700 mb-3"></textarea>
+                <div class="flex items-center justify-between">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="inject-toggle" class="sr-only peer" onchange="toggleInjection(this.checked)">
+                        <div class="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-warning relative"></div>
+                        <span class="text-[9px] text-slate-400 font-mono">Use Injected Context</span>
+                    </label>
+                    <div class="flex gap-2">
+                        <span id="inject-status" class="text-[8px] font-mono text-slate-600">OFF</span>
+                        <button onclick="clearInjection()" class="text-[8px] bg-slate-800 hover:bg-slate-700 text-slate-400 px-2 py-1 rounded border border-slate-700 transition font-bold uppercase">Clear</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resources Tab -->
+        <div id="p2-tab-resources" class="hidden flex-1 overflow-y-auto">
+            <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800/50">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-gauge-high text-warning"></i> Live Resource Inspector
+                </div>
+                <div class="space-y-3 text-[10px] font-mono">
+                    <div>
+                        <div class="flex justify-between mb-1"><span class="text-slate-500">CPU</span><span id="p2r-cpu" class="text-safe font-bold">0%</span></div>
+                        <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden"><div id="p2r-cpu-bar" class="bg-safe h-full w-0 transition-all"></div></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1"><span class="text-slate-500">RAM Usage</span><span id="p2r-ram" class="text-cyan-400 font-bold">—%</span></div>
+                        <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden"><div id="p2r-ram-bar" class="bg-cyan-500 h-full transition-all" style="width:0%"></div></div>
+                    </div>
+                    <div class="border-t border-slate-800 pt-3 grid grid-cols-2 gap-2">
+                        <div class="bg-slate-800/60 p-2 rounded border border-slate-700/50"><div class="text-[8px] text-slate-600 mb-0.5">VB Server RSS</div><div id="p2r-vb-rss" class="text-slate-200 font-bold">—MB</div></div>
+                        <div class="bg-slate-800/60 p-2 rounded border border-slate-700/50"><div class="text-[8px] text-slate-600 mb-0.5">GPU Wired</div><div id="p2r-gpu-wired" class="text-purple-400 font-bold">—GB</div></div>
+                        <div class="bg-slate-800/60 p-2 rounded border border-slate-700/50"><div class="text-[8px] text-slate-600 mb-0.5">Ollama Loaded</div><div id="p2r-ollama" class="text-purple-300 font-bold">—GB</div></div>
+                        <div class="bg-slate-800/60 p-2 rounded border border-slate-700/50"><div class="text-[8px] text-slate-600 mb-0.5">Other Users</div><div id="p2r-other" class="text-orange-400 font-bold">—GB</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div id="p2-tab-history" class="hidden flex-1 overflow-y-auto">
+            <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800/50 h-full flex flex-col">
+                <div class="flex justify-between items-center mb-3 flex-shrink-0">
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-accent"></i> Query History
+                        <span class="text-[8px] text-slate-600 font-normal normal-case">SQLite · cross-session</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="loadQueryHistory('all')"     class="text-[8px] bg-slate-800 hover:bg-slate-700 text-slate-400 px-2 py-1 rounded border border-slate-700 transition font-bold uppercase">All Sessions</button>
+                        <button onclick="loadQueryHistory('session')" class="text-[8px] bg-slate-800 hover:bg-slate-700 text-slate-400 px-2 py-1 rounded border border-slate-700 transition font-bold uppercase"><i class="fa-solid fa-rotate mr-1"></i>This Session</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto flex-1">
+                    <table class="w-full text-[9px] font-mono">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-500 uppercase tracking-widest text-[8px]">
+                                <td class="pb-2 pr-2">#</td>
+                                <td class="pb-2 pr-2 text-[7px] text-slate-600">Session</td>
+                                <td class="pb-2 pr-4">Query</td>
+                                <td class="pb-2 pr-2 text-right">Retrieve</td>
+                                <td class="pb-2 pr-2 text-right">Generate</td>
+                                <td class="pb-2 pr-2 text-right">Total</td>
+                                <td class="pb-2 text-right">ΔRSS</td>
+                            </tr>
+                        </thead>
+                        <tbody id="query-history-tbody">
+                            <tr><td colspan="7" class="text-slate-600 italic py-4 text-center">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hallucinations Tab -->
+        <div id="p2-tab-hallucinations" class="hidden flex-1 overflow-y-auto">
+            <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800/50 h-full flex flex-col">
+                <div class="flex justify-between items-center mb-3 flex-shrink-0">
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation text-danger"></i> Hallucination Ledger
+                    </div>
+                    <button onclick="loadHallucinations()" class="text-[8px] bg-slate-800 hover:bg-slate-700 text-slate-400 px-2 py-1 rounded border border-slate-700 transition font-bold uppercase">
+                        <i class="fa-solid fa-rotate mr-1"></i>Refresh
+                    </button>
+                </div>
+                <div class="overflow-x-auto flex-1">
+                    <table class="w-full text-[9px] font-mono">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-500 uppercase tracking-widest text-[8px]">
+                                <td class="pb-2 pr-2">#</td>
+                                <td class="pb-2 pr-2">Time</td>
+                                <td class="pb-2 pr-2">Type</td>
+                                <td class="pb-2 pr-4">Query Snippet</td>
+                                <td class="pb-2"></td>
+                            </tr>
+                        </thead>
+                        <tbody id="hallucinations-tbody">
+                            <tr><td colspan="5" class="text-slate-600 italic py-4 text-center">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Last Trace Tab -->
+        <div id="p2-tab-trace" class="hidden flex-1 overflow-y-auto">
+            <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800/50">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-timeline text-accent"></i> Last Query Trace
+                </div>
+                <div id="last-trace" class="space-y-1.5 text-[9px] font-mono">
+                    <div class="text-slate-600 italic">No query yet.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== PAGE 3: SEMANTIC OBSERVATORY ===== -->
+<div id="page-3" class="hidden flex-1 w-full h-full bg-darkblue flex flex-col overflow-hidden">
+    <div class="px-5 py-3 border-b border-slate-800 bg-[#02060f] flex justify-between items-center flex-shrink-0">
+        <div>
+            <h1 class="text-xl font-black text-white tracking-widest uppercase flex items-center gap-3">
+                <i class="fa-solid fa-map text-accent"></i> Semantic Observatory
+            </h1>
+            <p class="text-[9px] text-slate-500 uppercase mt-0.5 tracking-widest font-bold">3D Semantic Scatterplot · PCA Projection · <span id="p3-chunk-count" class="text-accent">—</span> chunks</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
+                <input type="text" id="p3-spotlight-input" placeholder="Spotlight search..." class="bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-[10px] font-mono outline-none focus:border-accent text-white w-48">
+                <button onclick="spotlightSearch()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold uppercase text-[9px] tracking-widest px-3 py-1.5 rounded border border-slate-700 transition">
+                    <i class="fa-solid fa-crosshairs mr-1 text-accent"></i>Spotlight
+                </button>
+                <button onclick="clearSpotlight()" class="bg-slate-800 hover:bg-slate-700 text-slate-400 font-bold uppercase text-[9px] px-2 py-1.5 rounded border border-slate-700 transition" title="Clear spotlight">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="p3-pca-stats" class="text-[8px] font-mono text-slate-600 text-right hidden">
+                <div>Variance: <span id="p3-variance" class="text-green-400">—</span></div>
+            </div>
+            <button onclick="renderVectorMap()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold uppercase text-[10px] tracking-widest px-5 py-2 rounded border border-slate-700 transition-colors">
+                <i class="fa-solid fa-satellite-dish mr-1 text-accent"></i> Generate PCA
+            </button>
+        </div>
+    </div>
+    <div class="flex-1 flex overflow-hidden">
+        <div class="flex-1 relative">
+            <div id="vector-plot" class="w-full h-full absolute inset-0"></div>
+            <div id="point-detail" class="hidden absolute top-4 left-4 bg-panel/95 border border-accent/30 rounded-xl p-4 max-w-xs shadow-2xl backdrop-blur-sm z-10">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="text-[9px] font-bold text-accent uppercase tracking-widest">Node Detail</div>
+                    <button onclick="document.getElementById('point-detail').classList.add('hidden')" class="text-slate-600 hover:text-white text-xs ml-2"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div id="pd-name" class="text-[10px] font-mono text-white font-bold mb-1 break-all"></div>
+                <div id="pd-repo" class="text-[9px] font-mono text-slate-400 mb-2"></div>
+                <div id="pd-coords" class="text-[8px] font-mono text-slate-600"></div>
+            </div>
+            <div id="vector-loader" class="hidden absolute inset-0 bg-darkblue/85 backdrop-blur-sm z-20 flex flex-col items-center justify-center">
+                <i class="fa-solid fa-circle-notch fa-spin text-4xl text-accent mb-4"></i>
+                <div class="text-accent text-sm uppercase tracking-widest font-bold">Computing PCA on <span id="loader-count">—</span> embeddings...</div>
+                <div class="text-slate-400 text-[10px] uppercase font-mono mt-2">Scikit-Learn 384D → 3D reduction</div>
+            </div>
+        </div>
+        <div class="w-[260px] flex-shrink-0 bg-panel border-l border-slate-800 flex flex-col overflow-hidden">
+            <div class="flex border-b border-slate-800 flex-shrink-0">
+                <button onclick="switchP3Tab('repos')"   id="p3t-repos"   class="flex-1 py-2 text-[8px] font-bold uppercase tracking-widest text-accent border-b-2 border-accent">Repos</button>
+                <button onclick="switchP3Tab('chunks')"  id="p3t-chunks"  class="flex-1 py-2 text-[8px] font-bold uppercase tracking-widest text-slate-500">Chunks</button>
+                <button onclick="switchP3Tab('heatmap')" id="p3t-heatmap" class="flex-1 py-2 text-[8px] font-bold uppercase tracking-widest text-slate-500">Heatmap</button>
+            </div>
+            <div id="p3-tab-repos" class="flex flex-col overflow-hidden flex-1">
+                <div class="p-3 border-b border-slate-800 flex-shrink-0">
+                    <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                        <i class="fa-solid fa-map-pin text-accent"></i> Top-Down Minimap
+                        <span class="text-[7px] text-slate-600 font-normal">(X·Y · camera view)</span>
+                    </div>
+                    <div id="vector-minimap" class="w-full rounded overflow-hidden border border-slate-800" style="height:170px">
+                        <div class="h-full flex items-center justify-center text-slate-700 text-[9px] font-mono">Generate PCA first</div>
+                    </div>
+                </div>
+                <div class="p-3 border-b border-slate-800 flex-shrink-0">
+                    <div class="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Filter by Repo</div>
+                    <div id="repo-filter-chips" class="flex flex-wrap gap-1">
+                        <span class="text-slate-700 text-[8px]">— load map first —</span>
+                    </div>
+                </div>
+                <div class="p-3 flex-1 overflow-y-auto">
+                    <div class="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-2">Repo Distribution</div>
+                    <div id="repo-stats" class="space-y-1.5 text-[8px] font-mono text-slate-500">
+                        <div class="text-slate-700 italic">— load map first —</div>
+                    </div>
+                </div>
+            </div>
+            <div id="p3-tab-chunks" class="hidden flex-col overflow-y-auto flex-1 p-3">
+                <div class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-layer-group text-accent"></i> Chunk Statistics
+                    <button onclick="loadChunkStats()" class="ml-auto text-[7px] bg-slate-800 hover:bg-slate-700 text-slate-500 px-1.5 py-0.5 rounded border border-slate-700 transition">Refresh</button>
+                </div>
+                <div id="chunk-stats-content">
+                    <div class="text-[8px] text-slate-700 italic">Click refresh to load stats</div>
+                </div>
+            </div>
+            <div id="p3-tab-heatmap" class="hidden flex-col overflow-y-auto flex-1 p-3">
+                <div class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-fire text-danger"></i> Retrieval Heatmap
+                    <button onclick="loadHeatmap()" class="ml-auto text-[7px] bg-slate-800 hover:bg-slate-700 text-slate-500 px-1.5 py-0.5 rounded border border-slate-700 transition">Refresh</button>
+                </div>
+                <div id="heatmap-content">
+                    <div class="text-[8px] text-slate-700 italic">Click refresh to load heatmap</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== PAGE 4: VAULT MANAGEMENT ===== -->
+<div id="page-4" class="hidden flex-1 w-full h-full bg-darkblue flex flex-col overflow-hidden">
+    <div class="px-5 py-3 border-b border-slate-800 bg-[#02060f] flex-shrink-0">
+        <div class="flex items-center gap-6">
+            <div>
+                <h1 class="text-xl font-black text-white tracking-widest uppercase flex items-center gap-3">
+                    <i class="fa-solid fa-database text-accent"></i> Vault Management
+                </h1>
+                <p class="text-[9px] text-slate-500 uppercase mt-0.5 tracking-widest font-bold">ChromaDB CRUD · Sync Drift · Backfill Queue</p>
+            </div>
+            <div class="flex items-center gap-4 ml-auto">
+                <div class="text-center">
+                    <div id="vault-health-score" class="text-4xl font-black text-emerald-400">—</div>
+                    <div class="text-[8px] text-slate-600 uppercase tracking-widest font-bold">Health Score</div>
+                </div>
+                <div id="vault-health-bars" class="space-y-1.5 w-48">
+                    <div class="text-[8px] text-slate-600 uppercase tracking-widest font-bold mb-1">Dimensions</div>
+                </div>
+                <button onclick="loadVaultHealth()" class="text-[8px] bg-slate-800 hover:bg-slate-700 text-slate-400 px-2 py-1 rounded border border-slate-700 transition font-bold uppercase">
+                    <i class="fa-solid fa-rotate mr-1"></i>Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="flex-1 flex overflow-hidden">
+        <div class="flex-1 border-r border-slate-800 p-4 overflow-y-auto flex flex-col gap-4">
+            <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800/50">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-magnifying-glass text-accent"></i> ChromaDB CRUD Explorer
+                </div>
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="chroma-search-q" placeholder="Search chunks..." class="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-[10px] font-mono outline-none focus:border-accent text-white">
+                    <button onclick="loadChromaSearch()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold uppercase text-[9px] px-3 py-1.5 rounded border border-slate-700 transition">
+                        <i class="fa-solid fa-magnifying-glass mr-1 text-accent"></i>Search
+                    </button>
+                </div>
+                <div class="flex gap-2 mb-3">
+                    <select id="chroma-file-sel" class="flex-1 bg-slate-800 border border-slate-700 rounded text-[10px] text-slate-300 p-1.5 font-mono outline-none">
+                        <option value="">— Select file to browse chunks —</option>
+                    </select>
+                    <button onclick="loadChromaFile()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold uppercase text-[9px] px-3 py-1.5 rounded border border-slate-700 transition">
+                        <i class="fa-solid fa-folder-open mr-1 text-warning"></i>Load
+                    </button>
+                </div>
+                <div id="chroma-results" class="overflow-x-auto max-h-64 overflow-y-auto">
+                    <div class="text-[8px] text-slate-700 italic">Enter a search query or select a file above.</div>
+                </div>
+            </div>
+        </div>
+        <div class="flex-1 p-4 overflow-y-auto flex flex-col gap-4">
+            <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800/50">
+                <div class="flex justify-between items-center mb-3">
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <i class="fa-solid fa-arrows-rotate text-warning"></i> Sync Drift Monitor
+                    </div>
+                    <button onclick="loadVaultDrift()" class="text-[8px] bg-slate-800 hover:bg-slate-700 text-slate-400 px-2 py-1 rounded border border-slate-700 transition font-bold uppercase">
+                        <i class="fa-solid fa-rotate mr-1"></i>Refresh
+                    </button>
+                </div>
+                <div id="drift-summary" class="grid grid-cols-4 gap-2 mb-3">
+                    <div class="bg-slate-800/60 p-2 rounded border border-slate-700/50 text-center"><div id="drift-total" class="text-slate-200 font-bold text-lg">—</div><div class="text-[7px] text-slate-600 uppercase tracking-widest">Total Files</div></div>
+                    <div class="bg-slate-800/60 p-2 rounded border border-slate-700/50 text-center"><div id="drift-indexed" class="text-emerald-400 font-bold text-lg">—</div><div class="text-[7px] text-slate-600 uppercase tracking-widest">Indexed</div></div>
+                    <div class="bg-slate-800/60 p-2 rounded border border-emerald-900/30 text-center"><div id="drift-never" class="text-yellow-400 font-bold text-lg">—</div><div class="text-[7px] text-slate-600 uppercase tracking-widest">Never Indexed</div></div>
+                    <div class="bg-slate-800/60 p-2 rounded border border-orange-900/30 text-center"><div id="drift-stale" class="text-orange-400 font-bold text-lg">—</div><div class="text-[7px] text-slate-600 uppercase tracking-widest">Stale</div></div>
+                </div>
+                <div class="mb-2">
+                    <button onclick="toggleDriftSection('stale')" class="w-full text-left text-[9px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-2 hover:text-white transition py-1">
+                        <i id="drift-stale-icon" class="fa-solid fa-chevron-right text-[7px]"></i> Stale Files
+                        <span id="drift-stale-count" class="text-orange-400 ml-auto">0</span>
+                    </button>
+                    <div id="drift-stale-list" class="hidden max-h-32 overflow-y-auto space-y-1 mt-1"></div>
+                </div>
+                <div>
+                    <button onclick="toggleDriftSection('never')" class="w-full text-left text-[9px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-2 hover:text-white transition py-1">
+                        <i id="drift-never-icon" class="fa-solid fa-chevron-right text-[7px]"></i> Never Indexed
+                        <span id="drift-never-count" class="text-yellow-400 ml-auto">0</span>
+                    </button>
+                    <div id="drift-never-list" class="hidden max-h-32 overflow-y-auto space-y-1 mt-1"></div>
+                </div>
+            </div>
+            <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800/50">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-accent"></i> Autonomous Backfill Queue
+                </div>
+                <div class="flex gap-2 mb-3">
+                    <button onclick="selectAllStale()" class="text-[8px] bg-slate-800 hover:bg-slate-700 text-slate-400 px-2 py-1 rounded border border-slate-700 transition font-bold uppercase">
+                        <i class="fa-solid fa-check-double mr-1"></i>Select All Stale
+                    </button>
+                    <button onclick="startBackfill()" class="flex-1 bg-accent/10 hover:bg-accent/20 text-accent font-bold uppercase text-[9px] py-1 rounded border border-accent/30 transition">
+                        <i class="fa-solid fa-play mr-1"></i>Start Backfill
+                    </button>
+                    <button onclick="stopBackfill()" id="backfill-stop-btn" class="hidden bg-red-900/30 hover:bg-red-800/50 text-danger font-bold uppercase text-[8px] px-3 py-1 rounded border border-red-800/50 transition">
+                        <i class="fa-solid fa-stop"></i>
+                    </button>
+                </div>
+                <div id="backfill-queue-list" class="max-h-24 overflow-y-auto space-y-0.5 mb-3 text-[8px] font-mono">
+                    <div class="text-slate-700 italic">Load drift data to populate queue</div>
+                </div>
+                <div id="backfill-progress-section" class="hidden">
+                    <div class="flex justify-between text-[8px] font-mono text-slate-500 mb-1">
+                        <span id="backfill-current-file" class="truncate flex-1 pr-2">—</span>
+                        <span id="backfill-count">0/0</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-2">
+                        <div id="backfill-progress-bar" class="bg-accent h-full transition-all" style="width:0%"></div>
+                    </div>
+                    <div class="text-[8px] font-mono text-slate-600">ETA: <span id="backfill-eta" class="text-orange-400">—</span></div>
+                </div>
+                <div id="backfill-log" class="max-h-28 overflow-y-auto space-y-0.5 text-[8px] font-mono mt-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== PAGE 5: INTELLIGENCE TOOLS ===== -->
+<div id="page-5" class="hidden flex-1 w-full h-full bg-darkblue flex flex-col overflow-hidden">
+    <div class="px-5 py-3 border-b border-slate-800 bg-[#02060f] flex-shrink-0">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-xl font-black text-white tracking-widest uppercase flex items-center gap-3">
+                    <i class="fa-solid fa-flask text-accent"></i> Intelligence Tools
+                </h1>
+                <p class="text-[9px] text-slate-500 uppercase mt-0.5 tracking-widest font-bold">Refactor Agent · Arch Graph · Web Grounding · Log Sniffer · Token Deep Dive</p>
+            </div>
+            <div class="flex gap-1">
+                <span onclick="switchP5Tab('refactor')" id="p5t-refactor" class="tab-btn active">Refactor Agent</span>
+                <span onclick="switchP5Tab('arch')"     id="p5t-arch"     class="tab-btn">Arch Graph</span>
+                <span onclick="switchP5Tab('web')"      id="p5t-web"      class="tab-btn">Web Grounding</span>
+                <span onclick="switchP5Tab('log')"      id="p5t-log"      class="tab-btn">Log Sniffer</span>
+                <span onclick="switchP5Tab('token')"    id="p5t-token"    class="tab-btn">Token Deep Dive</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex-1 overflow-hidden">
+
+        <!-- Refactor Agent Tab -->
+        <div id="p5-tab-refactor" class="h-full flex flex-col p-5 overflow-y-auto gap-4">
+            <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800/50 flex-shrink-0">
+                <div class="flex items-end gap-3">
+                    <div class="flex-1">
+                        <label class="text-[8px] text-slate-500 uppercase tracking-widest font-bold block mb-1">Browse Indexed Files</label>
+                        <select id="refactor-file-sel" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-[10px] font-mono outline-none focus:border-accent text-white mb-1">
+                            <option value="">— Select from vault —</option>
+                        </select>
+                        <input type="text" id="refactor-path" placeholder="or paste source name / file path" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-[10px] font-mono outline-none focus:border-accent text-white">
+                    </div>
+                    <div>
+                        <label class="text-[8px] text-slate-500 uppercase tracking-widest font-bold block mb-1">Mode</label>
+                        <div class="flex gap-2 text-[9px] font-mono">
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="refactor-mode" value="refactor" checked class="accent-accent"> Refactor</label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="refactor-mode" value="tests" class="accent-accent"> Tests</label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="refactor-mode" value="both" class="accent-accent"> Both</label>
+                        </div>
+                    </div>
+                    <button onclick="runRefactor()" class="bg-accent/10 hover:bg-accent/20 text-accent font-bold uppercase text-[10px] tracking-widest px-5 py-2 rounded border border-accent/30 transition">
+                        <i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Analyse
+                    </button>
+                </div>
+            </div>
+            <div id="refactor-spinner" class="hidden flex items-center justify-center py-8">
+                <i class="fa-solid fa-circle-notch fa-spin text-2xl text-accent mr-3"></i>
+                <span class="text-accent text-sm uppercase tracking-widest font-bold">Analysing with LLM...</span>
+            </div>
+            <div id="refactor-result" class="hidden flex-1 flex flex-col gap-4">
+                <div class="grid grid-cols-2 gap-4 flex-1">
+                    <div>
+                        <div class="text-[9px] text-slate-500 uppercase tracking-widest font-bold mb-2">Original</div>
+                        <pre id="refactor-original" class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-[9px] font-mono text-slate-300 overflow-x-auto max-h-96 overflow-y-auto whitespace-pre-wrap"></pre>
+                    </div>
+                    <div>
+                        <div class="text-[9px] text-slate-500 uppercase tracking-widest font-bold mb-2 flex items-center gap-2">
+                            Refactored
+                            <button onclick="approveRefactor()" class="ml-auto text-[8px] bg-emerald-900/30 hover:bg-emerald-800/50 text-emerald-400 px-2 py-0.5 rounded border border-emerald-800/40 transition font-bold uppercase">
+                                <i class="fa-solid fa-download mr-1"></i>Approve &amp; Save
+                            </button>
+                        </div>
+                        <pre id="refactor-refactored" class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-[9px] font-mono text-slate-300 overflow-x-auto max-h-96 overflow-y-auto whitespace-pre-wrap"></pre>
+                    </div>
+                </div>
+                <div id="refactor-tests-section" class="hidden">
+                    <button onclick="toggleSection('refactor-tests-body')" class="w-full text-left text-[9px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-2 hover:text-white transition py-1 border-t border-slate-800 pt-2">
+                        <i class="fa-solid fa-chevron-right text-[7px]"></i> Generated Tests
+                    </button>
+                    <pre id="refactor-tests-body" class="hidden bg-slate-900 border border-slate-800 rounded-xl p-4 text-[9px] font-mono text-slate-300 overflow-x-auto max-h-48 overflow-y-auto whitespace-pre-wrap mt-2"></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Arch Graph Tab -->
+        <div id="p5-tab-arch" class="hidden h-full flex flex-col p-5 gap-4 overflow-y-auto">
+            <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800/50 flex-shrink-0">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-diagram-project text-accent"></i> Architecture Graph Generator
+                </div>
+                <div class="flex gap-2 mb-2">
+                    <select id="arch-file-sel" class="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-[10px] font-mono outline-none focus:border-accent text-white">
+                        <option value="">— Browse indexed files —</option>
+                    </select>
+                    <button onclick="addArchFileFromBrowser()" class="text-[8px] bg-accent/10 hover:bg-accent/20 text-accent px-3 py-1 rounded border border-accent/30 transition font-bold uppercase">
+                        <i class="fa-solid fa-plus mr-1"></i>Add
+                    </button>
+                </div>
+                <div id="arch-file-inputs" class="space-y-2 mb-3"></div>
+                <div class="flex gap-2 mb-3">
+                    <button onclick="addArchFile()" class="text-[8px] bg-slate-800 hover:bg-slate-700 text-slate-400 px-3 py-1 rounded border border-slate-700 transition font-bold uppercase">
+                        <i class="fa-solid fa-keyboard mr-1"></i>Manual Entry
+                    </button>
+                    <button onclick="generateArchGraph()" class="flex-1 bg-accent/10 hover:bg-accent/20 text-accent font-bold uppercase text-[9px] py-1 rounded border border-accent/30 transition">
+                        <i class="fa-solid fa-diagram-project mr-1"></i>Generate Graph
+                    </button>
+                    <label class="flex items-center gap-2 text-[8px] text-slate-400 cursor-pointer">
+                        <input type="checkbox" id="arch-physics" checked class="accent-accent" onchange="toggleArchPhysics(this.checked)">
+                        Physics
+                    </label>
+                </div>
+                <div id="arch-network" style="height:500px" class="border border-slate-800 rounded-xl bg-darkblue overflow-hidden">
+                    <div class="h-full flex items-center justify-center text-slate-700 text-[10px] font-mono">
+                        <div class="text-center"><i class="fa-solid fa-diagram-project text-4xl text-slate-800 mb-3"></i><br>Enter file paths and generate graph</div>
+                    </div>
+                </div>
+                <div id="arch-node-detail" class="hidden mt-3 bg-slate-800/60 p-3 rounded border border-slate-700/50 text-[9px] font-mono text-slate-300">
+                    <span class="text-slate-500">Selected node: </span><span id="arch-node-label">—</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Web Grounding Tab -->
+        <div id="p5-tab-web" class="hidden h-full p-5 overflow-y-auto">
+            <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800/50 max-w-xl">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-globe text-accent"></i> Web Grounding
+                </div>
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <div class="text-[11px] font-bold text-slate-300">Web Search Fallback</div>
+                        <div class="text-[9px] text-slate-500 font-mono mt-0.5">When ChromaDB context score is below threshold, fall back to web search.</div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer ml-4">
+                        <input type="checkbox" id="web-search-toggle" class="sr-only peer" onchange="toggleWebSearch(this.checked)">
+                        <div class="w-10 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent relative"></div>
+                    </label>
+                </div>
+                <div class="mb-4">
+                    <div class="text-[8px] text-slate-500 uppercase tracking-widest font-bold mb-1">Status: <span id="web-search-status" class="text-danger">OFF</span></div>
+                </div>
+                <div class="mb-6">
+                    <label class="text-[8px] text-slate-500 uppercase tracking-widest font-bold block mb-2">Similarity Threshold: <span id="web-threshold-val" class="text-accent">0.5</span></label>
+                    <input type="range" id="web-threshold" min="0.1" max="0.9" step="0.05" value="0.5" class="w-full accent-accent" oninput="document.getElementById('web-threshold-val').textContent=this.value">
+                    <div class="flex justify-between text-[7px] text-slate-600 mt-0.5"><span>0.1 (permissive)</span><span>0.9 (strict)</span></div>
+                </div>
+                <div class="text-[8px] font-mono text-slate-600 mb-4">Last search used: <span id="web-last-search" class="text-slate-400">—</span></div>
+                <div class="bg-slate-800/60 p-3 rounded border border-slate-700/50 text-[9px] text-slate-400 font-mono leading-relaxed">
+                    <strong class="text-slate-300">How it works:</strong><br>
+                    When a query's top ChromaDB result has a similarity score below the threshold, VectorBrain automatically queries a web search API for supplemental context. The web results are appended to the retrieved context with a [WEB] source tag, allowing the LLM to ground its answer in current information not present in your indexed codebase.
+                </div>
+            </div>
+        </div>
+
+        <!-- Log Sniffer Tab -->
+        <div id="p5-tab-log" class="hidden h-full p-5 flex flex-col gap-4 overflow-hidden">
+            <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800/50 flex-shrink-0">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-bug text-danger"></i> Robot Log Sniffer
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="robot-log-path" placeholder="/path/to/vector.log or wire-pod.log" class="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-2 text-[10px] font-mono outline-none focus:border-accent text-white">
+                    <button onclick="connectRobotLog()" id="robot-log-connect" class="bg-accent/10 hover:bg-accent/20 text-accent font-bold uppercase text-[9px] px-4 py-2 rounded border border-accent/30 transition">
+                        <i class="fa-solid fa-plug mr-1"></i>Connect
+                    </button>
+                    <button onclick="disconnectRobotLog()" id="robot-log-disconnect" class="hidden bg-red-900/30 hover:bg-red-800/50 text-danger font-bold uppercase text-[9px] px-4 py-2 rounded border border-red-800/50 transition">
+                        <i class="fa-solid fa-plug-circle-xmark mr-1"></i>Disconnect
+                    </button>
+                    <button onclick="analyseRobotLog()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold uppercase text-[9px] px-3 py-2 rounded border border-slate-700 transition">
+                        <i class="fa-solid fa-brain mr-1 text-purple-400"></i>Analyse
+                    </button>
+                </div>
+            </div>
+            <div id="robot-log-view" class="flex-1 bg-darkblue border border-slate-800 rounded-xl p-3 overflow-y-auto font-mono text-[9px] min-h-0">
+                <div class="text-slate-700 italic">Connect to a log file to start streaming...</div>
+            </div>
+            <div id="robot-log-analysis" class="hidden bg-slate-900/90 p-4 rounded-xl border border-purple-900/30 flex-shrink-0">
+                <div class="text-[9px] font-bold text-purple-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-brain"></i> LLM Analysis
+                </div>
+                <div id="robot-log-analysis-content" class="text-[10px] text-slate-300 markdown-body"></div>
+            </div>
+        </div>
+
+        <!-- Token Deep Dive Tab -->
+        <div id="p5-tab-token" class="hidden h-full p-5 overflow-y-auto">
+            <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800/50 mb-4">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-bar text-emerald-400"></i> Token Deep Dive
+                </div>
+                <div class="w-full h-8 rounded-lg overflow-hidden flex border border-slate-700/30 mb-3 bg-slate-800">
+                    <div id="p5-tok-bar-sys"  class="bg-slate-500 h-full transition-all duration-500" style="width:6%"></div>
+                    <div id="p5-tok-bar-ctx"  class="bg-sky-500 h-full transition-all duration-500" style="width:0%"></div>
+                    <div id="p5-tok-bar-pmt"  class="bg-amber-400 h-full transition-all duration-500" style="width:0%"></div>
+                    <div id="p5-tok-bar-mem"  class="bg-indigo-500 h-full transition-all duration-500" style="width:0%"></div>
+                    <div id="p5-tok-bar-free" class="h-full" style="width:94%"></div>
+                </div>
+                <div id="token-breakdown-table" class="mb-4">
+                    <div class="text-[8px] text-slate-500 uppercase tracking-widest font-bold mb-2">Segment Breakdown</div>
+                    <table class="w-full text-[9px] font-mono">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-500 uppercase tracking-widest text-[8px]">
+                                <td class="pb-2 pr-3">Segment</td>
+                                <td class="pb-2 pr-3 text-right">Tokens</td>
+                                <td class="pb-2 pr-3 text-right">% Budget</td>
+                                <td class="pb-2"></td>
+                            </tr>
+                        </thead>
+                        <tbody id="token-breakdown-tbody">
+                            <tr><td colspan="4" class="text-slate-600 italic py-4 text-center">Submit a query first to see token breakdown.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="token-chunks-section" class="hidden">
+                    <div class="text-[8px] text-slate-500 uppercase tracking-widest font-bold mb-2">Context Chunks</div>
+                    <div id="token-chunks-list" class="space-y-1"></div>
+                </div>
+                <div id="token-recommendation" class="hidden mt-3 bg-slate-800/60 p-3 rounded border border-slate-700/50 text-[9px] font-mono text-warning">
+                    <i class="fa-solid fa-lightbulb mr-2"></i><span id="token-rec-text"></span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ===== JS MODULES ===== -->
+<script src="/static/js/constants.js"></script>
+<script src="/static/js/api.js"></script>
+<script src="/static/js/chat.js"></script>
+<script src="/static/js/telemetry.js"></script>
+<script src="/static/js/models.js"></script>
+<script src="/static/js/indexing.js"></script>
+<script src="/static/js/plotly-map.js"></script>
+<script src="/static/js/page2.js"></script>
+<script src="/static/js/page3.js"></script>
+<script src="/static/js/page4.js"></script>
+<script src="/static/js/page5.js"></script>
+<script>
+    // init — called after all modules loaded
+    document.addEventListener('DOMContentLoaded', initApp);
+</script>
+</body>
+</html>

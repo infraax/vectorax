@@ -205,7 +205,7 @@ VaultForge/pipeline/
 ### 1 — Clone and setup
 
 ```bash
-git clone https://github.com/lab/vectorax.git
+git clone https://github.com/infraax/vectorax.git
 cd vectorax
 
 # Bootstrap Python environment + pull Ollama models

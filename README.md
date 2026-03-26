@@ -415,9 +415,22 @@ Configured automations:
 This research project is released for educational and research purposes.
 
 All Vector robot source code belongs to their respective copyright holders:
-- **Anki, Inc.** and **Digital Dream Labs** — official repositories
-- **[fforchino](https://github.com/fforchino)** — community SDK forks
-- **[kercre123](https://github.com/kercre123)** — Wire-Pod community server
+
+| Repository | Copyright Holder |
+| --- | --- |
+| [digital-dream-labs/vector](https://github.com/digital-dream-labs/vector) | Anki, Inc. / Digital Dream Labs |
+| [digital-dream-labs/chipper](https://github.com/digital-dream-labs/chipper) | Anki, Inc. / Digital Dream Labs |
+| [digital-dream-labs/vector-cloud](https://github.com/digital-dream-labs/vector-cloud) | Anki, Inc. / Digital Dream Labs |
+| [digital-dream-labs/vector-bluetooth](https://github.com/digital-dream-labs/vector-bluetooth) | Anki, Inc. / Digital Dream Labs |
+| [digital-dream-labs/vector-web-setup](https://github.com/digital-dream-labs/vector-web-setup) | Anki, Inc. / Digital Dream Labs |
+| [digital-dream-labs/escape-pod-extension](https://github.com/digital-dream-labs/escape-pod-extension) | Anki, Inc. / Digital Dream Labs |
+| [digital-dream-labs/dev-docs](https://github.com/digital-dream-labs/dev-docs) | Anki, Inc. / Digital Dream Labs |
+| [digital-dream-labs/hugh](https://github.com/digital-dream-labs/hugh) | Anki, Inc. / Digital Dream Labs |
+| [fforchino/vector-python-sdk](https://github.com/fforchino/vector-python-sdk) | fforchino (community fork) |
+| [fforchino/vector-go-sdk](https://github.com/fforchino/vector-go-sdk) | fforchino (community fork) |
+| [fforchino/vectorx](https://github.com/fforchino/vectorx) | fforchino (community fork) |
+| [fforchino/vectorx-voiceserver](https://github.com/fforchino/vectorx-voiceserver) | fforchino (community fork) |
+| [kercre123/wire-pod](https://github.com/kercre123/wire-pod) | kercre123 (community project) |
 
 The VectorTRM.pdf is Anki proprietary documentation included for research purposes under fair use.
 
